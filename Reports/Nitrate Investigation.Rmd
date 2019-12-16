@@ -410,7 +410,7 @@ summary(simple_pca_1064)
 
 <br><br>
 
-Currently the ellipses are not being drawn...need to fix error
+Currently the ellipses are not being drawn...need to fix error =[
 
 <br><br>
 
@@ -462,11 +462,47 @@ The PCA algorithm has no trouble distinguising between the two kinds of nitrates
 
 <br><br>
 
-I'm going to try to build an RVM algorithm from scratch since everything is soooooo top secret here. Let's see how it turns out. All I have to go on is that RVM uses feature selection, so there is probably collinearity between the remaining variables, and that a variable inflation factor is applied, which definitely causes a decrease in specificity (more false positives). There appears to be no way to alter the default inflation factor of 5 in the device, although the internal paper mentions that it can be lowered to deal with false positive issues.
+I'm eventually going to try to build an RVM algorithm from scratch since I won't be able to get any source code. All I have to go on is that RVM uses feature selection, so there is probably collinearity between the remaining variables, and that a variable inflation factor is applied, which definitely causes a decrease in specificity (more false positives). There appears to be no way to alter the default inflation factor of 5 on the NanoRam 1064, although the internal paper mentions that it can be lowered to deal with false positive issues. For now, I will discuss the potential drawbacks of an RVM method and what I believe to be the root cause of the specificity issues.
 
 <br><br>
 
+### Hypothesis
 
+The number of false negatives using RVM is quite low. The main issue is false positives, i.e. a sample will come up as a positive match for two different methods. As mentioned in the technical paper, there is a variance inflation factor used to increase the variance of each spectrally reduced variable in the RVM method. The claim is that this will reduce the number of false negatives, which of course is true. However, the inflation factor will also inherently cause there to be a greater number of false positives. As I mentioned in the introduction, the technical paper mentions that lowering this inflation factor will increase specificity for distinguishing spectrally similar compounds, but apparently there is no option to perform this action on the actual device. 
+
+<br><br>
+
+An interesting phenomenon sometimes occurs when comparing two spectrally similar compounds. The method for sample A will work perfectly fine, but then the method for sample B will not be able to tell A and B apart, giving false positives for scans of sample A. Why does this occur? It appears that the underlying cause could be related to the spread of the data in each method being different magnitudes. There are a few visual aids that may be able to shed some light on the problem. Notice how the confidence region is artificially boosted for these two distributions:
+
+<br><br>
+
+![](C:/Users/jays/Desktop/Converted_Spectra/1064/Graphs/JunInflationFactor.jpg)
+
+<br><br>
+
+For well-separated spectra like in the above, obviously the confidence regions are not very close together, so it is unlikely that any false positives will occur. However, if the confidence regions are closer together...
+
+<br><br>
+
+![](C:/Users/jays/Desktop/Converted_Spectra/1064/Graphs/SnugEllipses.jpg)
+
+<br><br>
+
+...this can cause issues. Notice the disparity in the area of the ellipses; the (blue) calcium nitrate data  has a much smaller variance than the (orange) magnesium nitrate data, and thus its ellipse has significantly less area. Why does this matter? My intuitive guess is that When a sample of calcium nitrate and magnesium nitrate are run against the calcium nitrate method, the variance multiplication does not increase the area of the blue calcium nitrate ellipse enough to "cross" into the threshold of the orange magnesium nitrate ellipse. This means that the method will be able to properly differentiate between the two samples. However, when the magnesium nitrate method is used, the magnesium nitrate ellipse is much larger to start with, so when the size is scaled up with the inflation factor, it practically devours the calcium nitrate ellipse, leading to a false positive scan against the method. Note that the example uses scans from the 785 device with 20 scans; variance problems will be even higher in the 1064 device because the methods are built using only five scans. Without knowing explicitly how the RVM method works, this is only conjecture, but it gives a conceptual framework for understanding the crux of the issue. The p-value crosstable provides some support for this idea, since the calcium nitrate method has a false positive issue, and that method also has much higher variance on the 1064 scans:
+
+<br><br>
+
+![](C:/Users/jays/Desktop/Converted_Spectra/1064/Graphs/1064crosstable.jpg)
+
+<br><br>
+
+![](C:/Users/jays/Desktop/Converted_Spectra/1064/Graphs/1064spread.jpg)
+
+<br><br>
+
+More investigation will be required to ascertain whether or not this hypothesis is on the right track or not. Examination of other data sets is underway, as is the rogue RVM development. Stay tuned!
+
+<br><br>
 
 <center> <h1>Session Info</h1> </center>
 ```{r echo = FALSE}
