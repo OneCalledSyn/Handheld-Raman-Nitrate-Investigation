@@ -1,7 +1,7 @@
 ---
 title: "<center>Preliminary Nitrate Investigation</center>"
 author: "<center>Jay Shapiro</center>"
-date: "<center>Dec 9, 2019</center>"
+date: "<center>Dec 16, 2019</center>"
 output:
   html_document:
     theme: darkly
@@ -26,7 +26,7 @@ Topic: Why can the PCA algorithm on the NanoRam 785 differentiate between calciu
 
 <br><br>
 
-**Principal component Analysis** (PCA) is a procedure which takes a set of variables and transforms them into a new set of variables which have no collinearity, called **principal components**. **Dimensionality reduction** techniques such as PCA are often used in spectral classification and prediction due to the large number of variables present in each spectrum. Each data point in a spectrum is considered to be a variable, and reducing the number of variables is crucial in creating a meaningful model. PCA uses an approach called feature extraction, which involves creating new features from recombinations of existing variables in order to sufficiently describe a dataset with a smaller amount of variables.
+**Principal component Analysis** (PCA) is a procedure that takes a set of variables and transforms them into a new set of variables which have no collinearity, called **principal components**. Usage of **dimensionality reduction** techniques such as PCA is common in spectral classification and prediction due to the large number of variables present in each spectrum. Since each spectral data point is a variable, reducing the number of variables is crucial for creating a meaningful model. PCA utilizes an approach called feature extraction, which involves creating new features from recombinations of existing variables in order to sufficiently describe a dataset with a smaller amount of variables.
 
 <br><br>
 
@@ -34,7 +34,7 @@ Topic: Why can the PCA algorithm on the NanoRam 785 differentiate between calciu
 
 <br><br>
 
-First, methods containing 20 scans each were built using the B&W Tek handheld Raman analyzer, NanoRam 785, for a single sample of both magnesium nitrate and calcium nitrate. Then the same nitrate samples were measured using a B&W Tek NanoRam 1064 handheld Raman analyzer to create a five scan method for each sample. The raw data was processed with dark subtraction, scaling, and centering. Running PCA on the processed 785 nm spectral data yields the following:
+First,  a B&W Tek handheld Raman analyzer, NanoRam 785, built a method for a single sample of both magnesium nitrate and calcium nitrate. Next,  a B&W Tek NanoRam 1064 handheld Raman analyzer created a five scan method for the same samples. The raw data were processed with dark subtraction, scaling, and centering. Running PCA on the processed 785 nm spectral data yields the following:
 
 <br><br>
 
@@ -101,27 +101,17 @@ simple_pca <- prcomp(all_785_spectra[ , 1:582],
                       rank. = 5)
 
 #Graphical depiction of how the data looks on the PC axes
-autoplot(simple_pca, data = all_785_spectra, colour = "compound")
+autoplot(simple_pca, data = all_785_spectra, colour = "compound", title = "Nitrate PCA 785 nm")
 ```
 
 <br><br>
 
-### Scree Plots
-
-Scree plots show the eigenvalues of the principal components. The first one depicts the raw values of the variance on the y axis and the principal components in descending order by eigenvalue magnitude: 
-
-<br><br>
-
-```{r echo = FALSE, warning = FALSE, message = FALSE}
-#Variance of each principal component
-screeplot(simple_pca, npcs = 5)
-```
-
+### Scree Plot
 
 <br><br>
 
 
-The second plot depicts the percentage of the total variance explained by each principal component, again ordered in descending order by eigenvalue magnitude:
+The scree plot depicts the percentage of the total variance explained by each PC:
 
 <br><br>
 
@@ -134,7 +124,7 @@ fviz_eig(simple_pca)
 
 ### Statistical Summary
 
-The information in the preceding graphs is also displayed analytical in the below table:
+The information displayed by the prior scree plot shown as a statistical summary:
 
 <br><br>
 
@@ -147,7 +137,7 @@ summary(simple_pca)
 
 ### Confidence Ellipses
 
-A 95% confidence ellipse was constructed for each class . Under a large number of repeated sampling from the underlying distribution, and each time calculate a confidence ellipse, 95% of the constructed ellipses would contain the underlying mean of the distribution.
+A 95% confidence ellipse was constructed for each class . By repeatedly sampling from the underlying distribution in the same method, and each time calculating a confidence ellipse, 95% of the constructed ellipses would contain the underlying mean of the distribution.
 
 <br><br>
 
@@ -166,7 +156,7 @@ fviz_pca_ind(simple_pca,
 
 ## Conclusion
 
-The calcium nitrate samples had low in-class variance, but the magnesium nitrate samples had a few massive outliers that significantly raised the variance and heavily affected the PC construction. Furthermore, the between-class variance is fairly small, the two main clusters are right next to each other. Can we do better?
+The low variance for the calcium nitrate data contrasts heavily with the high variance magnesium data. One of the data points belonging to the magnesium nitrate class is a statistical outlier. Additionally, examining the spectrum reveals a distinctly different spectral output compared to the other scans. Removing this rogue scan allows the PCA algorithm to increase the distance between the two classes, instead of forcing most of the scans into a small subspace to offset a single outlier.
 
 <br><br><br><br>
 
@@ -180,7 +170,7 @@ Scaling before running PCA is a seemingly contentious issue in data science and 
 
 <br><br>
 
-Outliers can also have a substantial impact on the construction of principal components. From part one, it was immediately obvious that there was an outlier present from the magnesium nitrate group skewing the results of the PCA. Examining the spectra in a spectroscopy software called BWIQ graphically indicates that magnesium nitrate scan #12 is vastly different from the other magnesium nitrate scans and was likely due to human error in taking the scan of the sample. Two other potential outliers are shown in the PCA graph from part one, but spectrally they are not dissimilar to the other samples in the method, and after running PCA again with the largest outlier removed, those two scans are no longer problematic.
+Further research about preprocessing spectral data before PCA yields polarized opinions about when scaling is appropriate. A pragmatic approach to scaling involves not scaling if the variables are all measured on the same scale and have the same units. In the initial phase of this investigation, the scaled variables used the correlation matrix to perform the PCA. All future instances of PCA in this project employ unscaled variables and the covariance matrix.
 
 <br><br>
 
@@ -188,7 +178,7 @@ Outliers can also have a substantial impact on the construction of principal com
 
 <br><br>
 
-First, methods containing 20 scans each were built using the B&W Tek handheld Raman analyzer, NanoRam 785, for a single sample of both magnesium nitrate and calcium nitrate. The raw data was processed with dark subtraction, and centering. Magnesium nitrate sample scan #12 was removed from the dataset as an outlier. Running PCA on the processed 785 nm spectral data yields the following:
+First, we built 20 scan methods for a single sample of magnesium nitrate and calcium nitrate using the B&W Tek NanoRam 785. Next, we processed the data with dark subtraction and centering. I removed the magnesium nitrate sample scan #12 from the dataset as an outlier. I ran PCA on the processed 785 nm spectral data, which yielded the following results: 
 
 <br><br>
 
@@ -207,14 +197,7 @@ autoplot(simple_pca_adjusted, data = all_785_spectra_adjusted, colour = "compoun
 
 <br><br>
 
-### Scree Plots
-
-<br><br>
-
-```{r echo = FALSE, warning = FALSE, message = FALSE}
-#Variance of each principal component
-screeplot(simple_pca_adjusted, npcs = 5)
-```
+### Scree Plot
 
 <br><br>
 
@@ -296,7 +279,7 @@ p
 
 <br><br>
 
-**Reduced Variable Multivariate** (RVM) is another dimensionality reduction procedure which takes a set of variables and deletes many of the variables until a small subset of variables that accurately describe the dataset remain. RVM uses an approach called **feature deletion**, which differs from feature extraction in a couple ways. First, since variables are just removed instead of being transformed into new ones, there is a loss of data present in feature selection, whereas all of the original data is preserved in feature extraction. Second, there is no guarantee that the variables are free of collinearity in feature selection, while feature extraction does guarantee orthogonal variables with no collinearity. Before attempting to analyze the data collected on the 1064 nm device with RVM, first it will be run through the PCA model as a baseline for comparison.
+**Reduced Variable Multivariate Method for Spectral Identification** (RVM) is another dimensionality reduction procedure which takes a set of variables and deletes many of the variables until a small subset of variables that accurately describe the dataset remain. RVM uses an approach called **feature selection**, which differs from feature extraction in a couple of ways. First, feature selection removes variables instead of transforming them into new ones, which discards data from the original dataset. In contrast, feature extraction retains 100% of the original dataset. Second, there is no guarantee that the variables are free of collinearity in feature selection. As the number of dimensions increases, the chances that variables exhibit collinearity becomes increasingly more likely, and spectral data is known for having a high number of dimensions. Feature extraction guarantees orthogonal variables with no collinearity. Before attempting to analyze the data collected on the 1064 nm device with RVM, first, I will run the data through the PCA model as a baseline for comparison.
 
 <br><br>
 
@@ -375,16 +358,11 @@ autoplot(simple_pca_1064, data = all_1064_spectra, colour = "compound", size = 3
 ```
  <br><br>
  
- There don't seem to be any outliers present, and learning from the previoius sections, the variables are not scaled in the preprocessing steps.
+ There don't seem to be any outliers present, and as in the previous sections, the variables are centered but not scaled in the preprocessing steps.
  
  <br><br>
  
-### Scree Plots
-
-```{r echo = FALSE, warning = FALSE, message = FALSE}
-#Variance of each principal component
-screeplot(simple_pca_1064, npcs = 5)
-```
+### Scree Plot
 
 <br><br>
 
@@ -450,7 +428,7 @@ p
 
 <br><br>
 
-The PCA algorithm has no trouble distinguising between the two kinds of nitrates on the data from the 1064 nm device either. This would point to a flaw in the RVM algorithm, as the RVM method had specificity issues when examining the nitrate samples on the 1064 nm device. Further investigation will be conducted to uncover the issues the 1064 nm device is having with its current algorithm.
+The PCA algorithm has no trouble distinguishing the two classes of nitrates collected on the 1064 nm device, indicating a weakness in the RVM algorithm. The RVM method has specificity issues when examining the nitrate samples on the 1064 nm device, but the PCA algorithm does not. I will conduct further investigation to uncover the drawbacks of the RMV algorithm.
 
 <br><br>
 
@@ -462,17 +440,17 @@ The PCA algorithm has no trouble distinguising between the two kinds of nitrates
 
 <br><br>
 
-I'm eventually going to try to build an RVM algorithm from scratch since I won't be able to get any source code. All I have to go on is that RVM uses feature selection, so there is probably collinearity between the remaining variables, and that a variable inflation factor is applied, which definitely causes a decrease in specificity (more false positives). There appears to be no way to alter the default inflation factor of 5 on the NanoRam 1064, although the internal paper mentions that it can be lowered to deal with false positive issues. For now, I will discuss the potential drawbacks of an RVM method and what I believe to be the root cause of the specificity issues.
+Eventually, I will embark on the journey of trying to build an RVM algorithm from scratch. I know that RVM uses feature selection and an inflation factor.  Currently, there isn't a way to alter the default inflation factor on the NanoRam 1064, although an internal paper mentions that lowering it can assist with specificity issues for spectrally similar compounds. For now, I will discuss the potential drawbacks of the feature selection approach and what I believe to be the root cause of the specificity issues.
 
 <br><br>
 
 ### Hypothesis
 
-The number of false negatives using RVM is quite low. The main issue is false positives, i.e. a sample will come up as a positive match for two different methods. As mentioned in the technical paper, there is a variance inflation factor used to increase the variance of each spectrally reduced variable in the RVM method. The claim is that this will reduce the number of false negatives, which of course is true. However, the inflation factor will also inherently cause there to be a greater number of false positives. As I mentioned in the introduction, the technical paper mentions that lowering this inflation factor will increase specificity for distinguishing spectrally similar compounds, but apparently there is no option to perform this action on the actual device. 
+While RVM has stellar sensitivity, the main struggle for the algorithm is specificity, especially for spectrally similar compounds. An "inflation factor" increases the variance of each spectrally reduced variable in the RVM method, which also increases sensitivity. However, the inflation factor will also inherently deflate specificity. As previously mentioned, lowering this inflation factor will increase specificity, but the ability for a user to perform this action is not currently available on the device. 
 
 <br><br>
 
-An interesting phenomenon sometimes occurs when comparing two spectrally similar compounds. The method for sample A will work perfectly fine, but then the method for sample B will not be able to tell A and B apart, giving false positives for scans of sample A. Why does this occur? It appears that the underlying cause could be related to the spread of the data in each method being different magnitudes. There are a few visual aids that may be able to shed some light on the problem. Notice how the confidence region is artificially boosted for these two distributions:
+An interesting phenomenon can occur when comparing two spectrally similar compounds. The compound A method works correctly, but the sample B method is unable to tell A and B apart, giving false positives for scans of sample A. The underlying cause could be the spread of the data in each method having different magnitudes. Artificially boosting the confidence region for these two distributions causes spooky interactions.
 
 <br><br>
 
@@ -480,7 +458,7 @@ An interesting phenomenon sometimes occurs when comparing two spectrally similar
 
 <br><br>
 
-For well-separated spectra like in the above, obviously the confidence regions are not very close together, so it is unlikely that any false positives will occur. However, if the confidence regions are closer together...
+For well-separated clusters (above), the original confidence regions are not very close together, so it is unlikely that any false positives will occur, even after the inflation. However, if the confidence regions are closer together...
 
 <br><br>
 
@@ -488,7 +466,7 @@ For well-separated spectra like in the above, obviously the confidence regions a
 
 <br><br>
 
-...this can cause issues. Notice the disparity in the area of the ellipses; the (blue) calcium nitrate data  has a much smaller variance than the (orange) magnesium nitrate data, and thus its ellipse has significantly less area. Why does this matter? My intuitive guess is that When a sample of calcium nitrate and magnesium nitrate are run against the calcium nitrate method, the variance multiplication does not increase the area of the blue calcium nitrate ellipse enough to "cross" into the threshold of the orange magnesium nitrate ellipse. This means that the method will be able to properly differentiate between the two samples. However, when the magnesium nitrate method is used, the magnesium nitrate ellipse is much larger to start with, so when the size is scaled up with the inflation factor, it practically devours the calcium nitrate ellipse, leading to a false positive scan against the method. Note that the example uses scans from the 785 device with 20 scans; variance problems will be even higher in the 1064 device because the methods are built using only five scans. Without knowing explicitly how the RVM method works, this is only conjecture, but it gives a conceptual framework for understanding the crux of the issue. The p-value crosstable provides some support for this idea, since the calcium nitrate method has a false positive issue, and that method also has much higher variance on the 1064 scans:
+...this can cause issues. The (blue) calcium nitrate data has a smaller variance than the (orange) magnesium nitrate data, and consequently, a smaller ellipse. My educated guess is that when running a sample of calcium nitrate and magnesium nitrate against the calcium nitrate method, the variance multiplication does not increase the area of the blue calcium nitrate ellipse enough to "cross" into the threshold of the orange magnesium nitrate ellipse. The calcium nitrate method does not have specificity issues for those two compounds. After the inflation factor, the magnesium nitrate ellipse is large enough to overlap the calcium nitrate ellipse. The overlapping confidence ellipses lead to a false positive scan when testing calcium nitrate. An even higher variance will be present for method scans on the 1064 nm device since only five scans comprise the method. Without access to the contents of the RVM algorithm, I can only surmise that the overlapping ellipses are the crux of the specificity problems. The Applications team provided a p-value crosstable from their results of testing each sample against each method. The results corroborate the premise of the hypothesis as the calcium nitrate method returned a false positive for magnesium nitrate and a higher variance for the 1064 nm device method scans than the 785 nm device scans:
 
 <br><br>
 
@@ -500,7 +478,7 @@ For well-separated spectra like in the above, obviously the confidence regions a
 
 <br><br>
 
-More investigation will be required to ascertain whether or not this hypothesis is on the right track or not. Examination of other data sets is underway, as is the rogue RVM development. Stay tuned!
+I will examine more pairs of spectrally similar compounds before advocating remedial measures. Constructing an RVM pastiche to model the actual RVM algorithm in the device is a future goal as well, stay tuned!
 
 <br><br>
 

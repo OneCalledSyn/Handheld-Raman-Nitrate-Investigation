@@ -1,7 +1,7 @@
 ---
 title: "Full PCA Investigation"
 author: "Jay Shapiro"
-date: "12/12/2019"
+date: "TBD"
 output: 
   html_document:
     theme: flatly
@@ -10,7 +10,7 @@ output:
 
 ## Introduction
 
-Building a PCA with more and more samples over time and jamming the results in here
+I am building a PCA with more and more samples over time and jamming the results in here. So far, the available classes are magnesium nitrate, calcium nitrate, potassium carbonate, and potassium carbonate sesquihydrate.
 
 ```{r echo = FALSE, warning = FALSE, message = FALSE}
 library(tidyverse)
