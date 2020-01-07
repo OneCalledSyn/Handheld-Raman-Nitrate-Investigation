@@ -1,5 +1,5 @@
 ---
-title: "<center>Preliminary Nitrate Investigation</center>"
+title: "<center>Nitrate Investigation</center>"
 author: "<center>Jay Shapiro</center>"
 date: "<center>Dec 16, 2019</center>"
 output:
@@ -478,7 +478,7 @@ For well-separated clusters (above), the original confidence regions are not ver
 
 <br><br>
 
-I will examine more pairs of spectrally similar compounds before advocating remedial measures. Constructing an RVM pastiche to model the actual RVM algorithm in the device is a future goal as well, stay tuned!
+Before advocating corrective actions, I will have to examine more pairs of spectrally similar compounds to ensure that the findings in this investigation are generalizable. Constructing an RVM pastiche to model the actual RVM algorithm in the device is a future goal.
 
 <br><br>
 
