@@ -1,0 +1,467 @@
+---
+title: "<center>Nitrate Investigation</center>"
+author: "<center>Jay Shapiro</center>"
+date: "<center>Dec 16, 2019</center>"
+output:
+  html_document:
+    theme: darkly
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+<br><br>
+
+Topic: Why can the PCA algorithm on the NanoRam 785 differentiate between calcium nitrate and magnesium nitrate, but the RVM algorithm on the NanoRam 1064 cannot?
+
+<br><br>
+
+<center> <h1>Part One: 785 nm</h1> </center>
+
+<br><br>
+
+## Introduction
+
+<br><br>
+
+**Principal component Analysis** (PCA) is a procedure that takes a set of variables and transforms them into a new set of variables which have no collinearity, called **principal components**. Usage of **dimensionality reduction** techniques such as PCA is common in spectral classification and prediction due to the large number of variables present in each spectrum. Since each spectral data point is a variable, reducing the number of variables is crucial for creating a meaningful model. PCA utilizes an approach called feature extraction, which involves creating new features from recombinations of existing variables in order to sufficiently describe a dataset with a smaller amount of variables.
+
+<br><br>
+
+## Results
+
+<br><br>
+
+First,  a B&W Tek handheld Raman analyzer, NanoRam 785, built a method for a single sample of both magnesium nitrate and calcium nitrate. Next,  a B&W Tek NanoRam 1064 handheld Raman analyzer created a five scan method for the same samples. The raw data were processed with dark subtraction, scaling, and centering. Running PCA on the processed 785 nm spectral data yields the following:
+
+<br><br>
+
+```{r echo = FALSE, warning = FALSE, message = FALSE}
+library(plotly)
+library(tidyverse)
+library(ggplot2)
+library(plyr)
+library(data.table)
+library(readr)
+library(dplyr)
+library(ggfortify)
+library(factoextra)
+
+
+#Grab the file names of the 20 spectra for 785nm measured Calcium Nitrate
+myfiles <- list.files(path = "C:/Users/jays/Desktop/Converted_Spectra/785/Ca_Nitrate", 
+                        pattern = "*.txt", full.names = TRUE)
+
+#Instantiate an empty data frame to jam the raw data into
+ca_nitrate_785 <- data.frame()
+
+#Loop through the files to build one dataframe
+for (lambda in c(1:20)) {
+  location <- myfiles[lambda]
+  temp <- fread(file = location, 
+                sep = ";", fill = TRUE, header = TRUE) %>% select(`Dark Subtracted`)
+  
+  temp <- transpose(temp)
+  
+  ca_nitrate_785[lambda, 1:582] <- temp
+}
+
+
+#Repeat above steps for the 20 spectra of 785nm measured Magnesium Nitrate
+myfiles <- list.files(path = "C:/Users/jays/Desktop/Converted_Spectra/785/Mg_Nitrate", 
+                      pattern = "*.txt", full.names = TRUE)
+
+#Instantiate an empty data frame to jam the raw data into
+mg_nitrate_785 <- data.frame()
+
+#Loop through the files
+for (lambda in c(1:20)) {
+  location <- myfiles[lambda]
+  temp <- fread(file = location, 
+                sep = ";", fill = TRUE, header = TRUE) %>% select(`Dark Subtracted`)
+  
+  temp <- transpose(temp)
+  
+  mg_nitrate_785[lambda, 1:582] <- temp
+}
+
+#Slap on an identification column
+ca_nitrate_785 <- ca_nitrate_785 %>% mutate(compound = "ca")
+mg_nitrate_785 <- mg_nitrate_785 %>% mutate(compound = "mg")
+
+#Create a master dataframe of all 40 spectra
+all_785_spectra <- rbind(ca_nitrate_785, mg_nitrate_785)
+
+#Creating the PCA model
+simple_pca <- prcomp(all_785_spectra[ , 1:582],
+                      center = TRUE,
+                      scale = TRUE,
+                      rank. = 5)
+
+#Graphical depiction of how the data looks on the PC axes
+autoplot(simple_pca, data = all_785_spectra, colour = "compound", title = "Nitrate PCA 785 nm")
+```
+
+<br><br>
+
+### Scree Plot
+
+<br><br>
+
+
+The scree plot depicts the percentage of the total variance explained by each PC:
+
+<br><br>
+
+```{r echo = FALSE, warning = FALSE, message = FALSE}
+#Explanatory power of each principal component
+fviz_eig(simple_pca)
+```
+
+<br><br>
+
+### Statistical Summary
+
+The information displayed by the prior scree plot shown as a statistical summary:
+
+<br><br>
+
+```{r echo = FALSE, warning = FALSE, message = FALSE}
+#Check out statistics describing how important each PC is                       
+summary(simple_pca)
+```
+
+<br><br>
+
+### Confidence Ellipses
+
+A 95% confidence ellipse was constructed for each class . By repeatedly sampling from the underlying distribution in the same method, and each time calculating a confidence ellipse, 95% of the constructed ellipses would contain the underlying mean of the distribution.
+
+<br><br>
+
+```{r echo = FALSE, warning = FALSE, message = FALSE}
+fviz_pca_ind(simple_pca,
+              palette = c("#00AFBB",  "#FC4E07"),
+              addEllipses = TRUE,
+              col.ind = all_785_spectra$compound,
+              ellipse.type = "confidence",
+              ellipse.level = 0.95,
+              legend.title = "Groups",
+              repel = TRUE)
+```
+
+<br><br>
+
+## Conclusion
+
+The low variance for the calcium nitrate data contrasts heavily with the high variance magnesium data. One of the data points belonging to the magnesium nitrate class is a statistical outlier. Additionally, examining the spectrum reveals a distinctly different spectral output compared to the other scans. Removing this rogue scan allows the PCA algorithm to increase the distance between the two classes, instead of forcing most of the scans into a small subspace to offset a single outlier.
+
+<br><br><br><br>
+
+<center> <h1>Part Two: 785 adjusted</h1> </center>
+
+## Introduction
+
+<br><br>
+
+Scaling before running PCA is a seemingly contentious issue in data science and spectral literature. There is a general consensus that scaling is required when variables have different units or greatly differing standard deviations. However, spectral data variables are all just relative intensities at certain pixels, which means that the variables will have the same units and are all measured on the same scale. Given that these two conditions are met, it would be acceptable and potentially even advantageous not to scale the variables and perform the PCA based on the covariance matrix. Otherwise, scaling the variables and using the correlation matrix to perform the PCA makes more sense.
+
+<br><br>
+
+Further research about preprocessing spectral data before PCA yields polarized opinions about when scaling is appropriate. A pragmatic approach to scaling involves not scaling if the variables are all measured on the same scale and have the same units. In the initial phase of this investigation, the scaled variables used the correlation matrix to perform the PCA. All future instances of PCA in this project employ unscaled variables and the covariance matrix.
+
+<br><br>
+
+## Results
+
+<br><br>
+
+First, we built 20 scan methods for a single sample of magnesium nitrate and calcium nitrate using the B&W Tek NanoRam 785. Next, we processed the data with dark subtraction and centering. I removed the magnesium nitrate sample scan #12 from the dataset as an outlier. I ran PCA on the processed 785 nm spectral data, which yielded the following results: 
+
+<br><br>
+
+```{r echo = FALSE, warning = FALSE, message = FALSE}
+#Retrying PCA model with Mg Nitrate scan #12 outlier removed
+all_785_spectra_adjusted <- all_785_spectra[-c(24),]
+
+#Creating the PCA model using SVD method
+simple_pca_adjusted <- prcomp(all_785_spectra_adjusted[ , 1:582],
+                     center = TRUE,
+                     scale = FALSE,
+                     rank. = 5)
+#Graphical depiction of how the data looks on the PC axes
+autoplot(simple_pca_adjusted, data = all_785_spectra_adjusted, colour = "compound")
+```
+
+<br><br>
+
+### Scree Plot
+
+<br><br>
+
+```{r echo = FALSE, warning = FALSE, message = FALSE}
+#Explanatory power of each principal component
+fviz_eig(simple_pca_adjusted)
+```
+
+
+<br><br>
+
+
+### Statistical Summary
+
+<br><br>
+
+
+```{r echo = FALSE, warning = FALSE, message = FALSE}
+#Check out statistics describing how important each PC is                       
+summary(simple_pca_adjusted)
+```
+
+
+<br><br>
+
+### Confidence Ellipses
+
+<br><br>
+
+```{r echo = FALSE, warning = FALSE, message = FALSE}
+fviz_pca_ind(simple_pca_adjusted,
+             palette = c("#00AFBB",  "#FC4E07"),
+             addEllipses = TRUE,
+             col.ind = all_785_spectra_adjusted$compound,
+             ellipse.type = "confidence",
+             ellipse.level = 0.95,
+             legend.title = "Groups",
+             repel = TRUE)
+```
+
+<br><br>
+
+```{r echo = FALSE, warning = FALSE, message = FALSE}
+#Retrying PCA model with Mg Nitrate scan #12 outlier removed
+all_785_spectra_adjusted <- all_785_spectra[-c(24),]
+
+#Creating the PCA model using SVD method
+simple_pca_adjusted <- prcomp(all_785_spectra_adjusted[ , 1:582],
+                     center = TRUE,
+                     scale = FALSE,
+                     rank. = 5)
+```
+
+<br><br>
+
+### Interactive 3-Dimensional PCA Scores
+
+<br><br>
+
+
+```{r echo = FALSE, warning = FALSE, message = FALSE}
+scores_785 <- data.frame(simple_pca_adjusted$x)  
+
+p <- plot_ly(scores_785, x = ~PC1, y = ~PC2, z = ~PC3, color = ~all_785_spectra_adjusted$compound, colors = c("#00AFBB",  "#FC4E07")) %>%
+  add_markers() %>%
+  layout(scene = list(xaxis = list(title = 'PC1'),
+                      yaxis = list(title = 'PC2'),
+                      zaxis = list(title = 'PC3')))
+
+p
+```
+
+
+<br><br>
+
+<center> <h1>Part Three: 1064 nm PCA</h1> </center>
+
+## Introduction
+
+<br><br>
+
+**Reduced Variable Multivariate Method for Spectral Identification** (RVM) is another dimensionality reduction procedure which takes a set of variables and deletes many of the variables until a small subset of variables that accurately describe the dataset remain. RVM uses an approach called **feature selection**, which differs from feature extraction in a couple of ways. First, feature selection removes variables instead of transforming them into new ones, which discards data from the original dataset. In contrast, feature extraction retains 100% of the original dataset. Second, there is no guarantee that the variables are free of collinearity in feature selection. As the number of dimensions increases, the chances that variables exhibit collinearity becomes increasingly more likely, and spectral data is known for having a high number of dimensions. Feature extraction guarantees orthogonal variables with no collinearity. Before attempting to analyze the data collected on the 1064 nm device with RVM, first, I will run the data through the PCA model as a baseline for comparison.
+
+<br><br>
+
+## Results
+
+<br><br>
+
+```{r echo = FALSE, warning = FALSE, message = FALSE}
+#Grab the file names of the 20 spectra for 1064nm measured Calcium Nitrate
+myfiles <- list.files(path = "C:/Users/jays/Desktop/Converted_Spectra/1064/Ca_Nitrate", 
+                      pattern = "*.txt", full.names = TRUE)
+
+#Instantiate an empty data frame to jam the raw data into
+ca_nitrate_1064 <- data.frame()
+
+#Loop through the files to build one dataframe
+for (lambda in c(1:5)) {
+  location <- myfiles[lambda]
+  temp <- fread(file = location, 
+                sep = ";", fill = TRUE, header = TRUE) %>% select(`Dark Subtracted`)
+  
+  temp <- transpose(temp)
+  
+  ca_nitrate_1064[lambda, 1:582] <- temp
+}
+
+#Repeat above steps for the 5 spectra of 1064nm measured Magnesium Nitrate
+myfiles <- list.files(path = "C:/Users/jays/Desktop/Converted_Spectra/1064/Mg_Nitrate", 
+                      pattern = "*.txt", full.names = TRUE)
+
+#Instantiate an empty data frame to jam the raw data into
+mg_nitrate_1064 <- data.frame()
+
+#Loop through the files
+for (lambda in c(1:5)) {
+  location <- myfiles[lambda]
+  temp <- fread(file = location, 
+                sep = ";", fill = TRUE, header = TRUE) %>% select(`Dark Subtracted`)
+  
+  temp <- transpose(temp)
+  
+  mg_nitrate_1064[lambda, 1:582] <- temp
+}
+
+#Slap on an identification column
+ca_nitrate_1064 <- ca_nitrate_1064 %>% mutate(compound = "ca")
+mg_nitrate_1064 <- mg_nitrate_1064 %>% mutate(compound = "mg")
+
+#Create a master dataframe of all 10 spectra
+all_1064_spectra <- rbind(ca_nitrate_1064, mg_nitrate_1064)
+
+#Import the validation files
+ca_validation <- fread(file = "C:/Users/jays/Desktop/Converted_Spectra/1064/Validation/Ca_Nitrate_Validation.txt", 
+                        sep = ";", fill = TRUE, header = TRUE) %>% select(`Dark Subtracted`) %>% transpose()
+
+mg_validation <- fread(file = "C:/Users/jays/Desktop/Converted_Spectra/1064/Validation/Mg_Nitrate_Validation.txt",
+                       sep = ";", fill = TRUE, header = TRUE) %>% select(`Dark Subtracted`) %>% transpose()
+
+#Add identifier to each observation
+ca_validation <- ca_validation %>% mutate(compound = "ca_val")
+mg_validation <- mg_validation %>% mutate(compound = "mg_val")
+
+#Attach validation observations to master dataset
+all_1064_spectra <- rbind(all_1064_spectra, ca_validation, mg_validation)
+#str(all_1064_spectra)
+
+
+simple_pca_1064 <- prcomp(all_1064_spectra[ , 1:582],
+                     center = TRUE,
+                     scale = FALSE,
+                     rank. = 3)
+
+#Graphical depiction of how the data looks on the PC axes
+autoplot(simple_pca_1064, data = all_1064_spectra, colour = "compound", size = 3, 
+          title = "PCA of Ca Nitrate and Mg Nitrate")
+```
+ <br><br>
+ 
+ There don't seem to be any outliers present, and as in the previous sections, the variables are centered but not scaled in the preprocessing steps.
+ 
+ <br><br>
+ 
+### Scree Plot
+
+<br><br>
+
+```{r echo = FALSE, warning = FALSE, message = FALSE}
+#Explanatory power of each principal component
+fviz_eig(simple_pca_1064)
+```
+
+<br><br>
+
+### Statistical Summary
+
+<br><br>
+
+```{r echo = FALSE, warning = FALSE, message = FALSE}
+#Check out statistics describing how important each PC is                       
+summary(simple_pca_1064)
+```
+
+<br><br>
+
+### Interactive 3-Dimensional PCA Scores
+
+<br><br>
+
+```{r echo = FALSE, warning = FALSE, message = FALSE}
+scores_1064 <- data.frame(simple_pca_1064$x)  
+
+p <- plot_ly(scores_1064, x = ~PC1, y = ~PC2, z = ~PC3, color = ~all_1064_spectra$compound, 
+             colors = c("#00AFBB",  "#FC4E07", "#3bd95d", "#e3121d")) %>%
+  add_markers() %>%
+  layout(scene = list(xaxis = list(title = 'PC1'),
+                      yaxis = list(title = 'PC2'),
+                      zaxis = list(title = 'PC3')))
+
+p
+```
+
+<br><br>
+
+### Conclusion
+
+<br><br>
+
+The PCA algorithm has no trouble distinguishing the two classes of nitrates collected on the 1064 nm device, indicating a weakness in the RVM algorithm. The RVM method has specificity issues when examining the nitrate samples on the 1064 nm device, but the PCA algorithm does not. I will conduct further investigation to uncover the drawbacks of the RMV algorithm.
+
+<br><br>
+
+<center> <h1>Part Four: 1064 nm RVM</h1> </center>
+
+<br><br>
+
+## Introduction
+
+<br><br>
+
+Eventually, I will embark on the journey of trying to build an RVM algorithm from scratch. I know that RVM uses feature selection and an inflation factor.  Currently, there isn't a way to alter the default inflation factor on the NanoRam 1064, although an internal paper mentions that lowering it can assist with specificity issues for spectrally similar compounds. For now, I will discuss the potential drawbacks of the feature selection approach and what I believe to be the root cause of the specificity issues.
+
+<br><br>
+
+### Hypothesis
+
+While RVM has stellar sensitivity, the main struggle for the algorithm is specificity, especially for spectrally similar compounds. An "inflation factor" increases the variance of each spectrally reduced variable in the RVM method, which also increases sensitivity. However, the inflation factor will also inherently deflate specificity. As previously mentioned, lowering this inflation factor will increase specificity, but the ability for a user to perform this action is not currently available on the device. 
+
+<br><br>
+
+An interesting phenomenon can occur when comparing two spectrally similar compounds. The compound A method works correctly, but the sample B method is unable to tell A and B apart, giving false positives for scans of sample A. The underlying cause could be the spread of the data in each method having different magnitudes. Artificially boosting the confidence region for these two distributions causes spooky interactions.
+
+<br><br>
+
+![](C:/Users/jays/Desktop/Converted_Spectra/1064/Graphs/JunInflationFactor.jpg)
+
+<br><br>
+
+For well-separated clusters (above), the original confidence regions are not very close together, so it is unlikely that any false positives will occur, even after the inflation. However, if the confidence regions are closer together...
+
+<br><br>
+
+![](C:/Users/jays/Desktop/Converted_Spectra/1064/Graphs/SnugEllipses.jpg)
+
+<br><br>
+
+...this can cause issues. The (blue) calcium nitrate data has a smaller variance than the (orange) magnesium nitrate data, and consequently, a smaller ellipse. My educated guess is that when running a sample of calcium nitrate and magnesium nitrate against the calcium nitrate method, the variance multiplication does not increase the area of the blue calcium nitrate ellipse enough to "cross" into the threshold of the orange magnesium nitrate ellipse. The calcium nitrate method does not have specificity issues for those two compounds. After the inflation factor, the magnesium nitrate ellipse is large enough to overlap the calcium nitrate ellipse. The overlapping confidence ellipses lead to a false positive scan when testing calcium nitrate. An even higher variance will be present for method scans on the 1064 nm device since only five scans comprise the method. Without access to the contents of the RVM algorithm, I can only surmise that the overlapping ellipses are the crux of the specificity problems. The Applications team provided a p-value crosstable from their results of testing each sample against each method. The results corroborate the premise of the hypothesis as the calcium nitrate method returned a false positive for magnesium nitrate and a higher variance for the 1064 nm device method scans than the 785 nm device scans:
+
+<br><br>
+
+![](C:/Users/jays/Desktop/Converted_Spectra/1064/Graphs/1064crosstable.jpg)
+
+<br><br>
+
+![](C:/Users/jays/Desktop/Converted_Spectra/1064/Graphs/1064spread.jpg)
+
+<br><br>
+
+Before advocating corrective actions, I will have to examine more pairs of spectrally similar compounds to ensure that the findings in this investigation are generalizable. Constructing an RVM pastiche to model the actual RVM algorithm in the device is a future goal.
+
+<br><br>
+
+<center> <h1>Session Info</h1> </center>
+```{r echo = FALSE}
+sessionInfo()
+```
